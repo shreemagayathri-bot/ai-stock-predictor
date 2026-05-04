@@ -7,18 +7,48 @@ from model_logic import prepare_data, build_lstm_model, predict_future
 st.set_page_config(page_title="AI Stock Predictor", layout="wide", page_icon="📈")
 
 # Earthy Styling
+# 2. Styling (Updated for White Text)
 st.markdown("""
     <style>
-    .stApp { background-color: #FAF9F6 !important; }
-    section[data-testid="stSidebar"] { background-color: #EFEBE3 !important; }
+    /* Main background */
+    .stApp { 
+        background-color: #1E1E1E !important; 
+    }
+    
+    /* Sidebar background */
+    section[data-testid="stSidebar"] { 
+        background-color: #2D2D2D !important; 
+    }
+    
+    /* Metric Card Styling */
     div[data-testid="stMetric"] {
-        background-color: #FFFFFF !important;
-        border: 2px solid #A0522D !important;
+        background-color: #333333 !important;
+        border: 1px solid #A0522D !important;
         border-radius: 10px !important;
         padding: 15px !important;
     }
-    h1, h2, h3, h4, h5, h6 { color: #A0522D !important; }
-    div.stButton > button { background-color: #A0522D !important; color: white !important; }
+
+    /* Target all text elements to be white */
+    h1, h2, h3, h4, h5, h6, p, div, label, .stMetricLabel, .stMetricValue, .stMarkdown {
+        color: #FFFFFF !important;
+    }
+
+    /* Sidebar specific text (to ensure sliders and labels are visible) */
+    .css-17l2qt2, .stSlider label {
+        color: #FFFFFF !important;
+    }
+
+    /* Button Styling */
+    div.stButton > button {
+        background-color: #A0522D !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    /* Plotly background fix for dark mode */
+    .js-plotly-plot .plotly .main-svg {
+        background: transparent !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -71,7 +101,7 @@ try:
             st.subheader("📈 Historical Trend")
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=data.index[-100:], y=data['Close'][-100:], line=dict(color='#A0522D')))
-            fig.update_layout(template="plotly_white", height=300)
+            fig.update_layout(template="black", height=300)
             st.plotly_chart(fig, use_container_width=True)
 
         if st.button("🚀 Run AI Prediction", type="primary"):
