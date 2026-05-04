@@ -36,11 +36,30 @@ pred_len = st.sidebar.slider("Prediction Horizon", 1, 14, 7)
 
 # 4. Data Logic
 @st.cache_data
-def get_data(ticker):
-    df = yf.download(ticker, start="2020-01-01", progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df[['Open', 'High', 'Low', 'Close']]
+# 4. Data Logic
+@st.cache_data
+def get_data(ticker_symbol):
+    try:
+        # Create Ticker object
+        ticker_obj = yf.Ticker(ticker_symbol.strip().upper())
+        
+        # history() is more robust for cloud deployments than download()
+        df = ticker_obj.history(period="5y")
+        
+        if df.empty:
+            return pd.DataFrame()
+            
+        # Standardize columns: yfinance history() returns Title Case (Close, Open)
+        # We ensure they match your model's expected lowercase or title case logic
+        df = df[['Open', 'High', 'Low', 'Close']]
+        
+        # Drop timezone info to prevent Plotly/Pandas date errors
+        df.index = df.index.tz_localize(None)
+        
+        return df
+    except Exception as e:
+        st.error(f"Error fetching {ticker_symbol}: {e}")
+        return pd.DataFrame()
 
 # 5. UI Layout
 st.title("🚀 AI-Powered Stock Forecasting")
@@ -76,7 +95,7 @@ try:
                 with st.spinner("Training LSTM..."):
                     X, y, scaler = prepare_data(data, seq_len, pred_len)
                     model = build_lstm_model(seq_len, pred_len)
-                    model.fit(X[-100:], y[-100:], epochs=5, batch_size=16, verbose=0)
+                    model.fit(X[-50:], y[-50:], epochs=1, batch_size=16, verbose=0)
                     
                     last_seq = data.values[-seq_len:]
                     # Pass the dynamic seq_len to the prediction function
