@@ -48,23 +48,28 @@ pred_len = st.sidebar.slider("Prediction Horizon", 1, 14, 7)
 @st.cache_data(ttl=3600)
 def get_data(symbol):
     try:
-        # 1. Force uppercase and strip whitespace
-        clean_symbol = symbol.strip().upper()
-        if not clean_symbol:
-            return pd.DataFrame()
-
-        # 2. Fetch using Ticker object
-        ticker_obj = yf.Ticker(clean_symbol)
-        
-        # 3. Use period="2y" to ensure we have enough data for the lookback
-        df = ticker_obj.history(period="2y", interval="1d", auto_adjust=True)
-        
-        # 4. Fallback: If history() fails, try download()
-        if df is None or df.empty:
-            df = yf.download(clean_symbol, period="2y", progress=False, auto_adjust=True)
+        # Use yf.download - it's more stable for bulk data in recent 2026 versions
+        df = yf.download(symbol, period="2y", interval="1d", progress=False, auto_adjust=True)
         
         if df.empty:
             return pd.DataFrame()
+
+        # 🔥 THE CRITICAL FIX: Flatten MultiIndex columns
+        # yfinance often returns columns like ('Close', 'TSLA') instead of just 'Close'
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+            
+        # Ensure we have a clean copy of only the OHLC columns
+        df = df[['Open', 'High', 'Low', 'Close']].copy()
+        
+        # Remove timezone to prevent Plotly/LSTM errors
+        df.index = df.index.tz_localize(None)
+        
+        return df
+    except Exception as e:
+        # This will show you the exact technical error in the sidebar if it fails
+        st.sidebar.error(f"⚠️ API Error: {e}")
+        return pd.DataFrame()
 
         # 5. Handle MultiIndex columns (sometimes happens with yfinance)
         if isinstance(df.columns, pd.MultiIndex):
