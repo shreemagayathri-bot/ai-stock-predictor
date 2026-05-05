@@ -41,29 +41,44 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.sidebar.title("🛠️ Control Panel")
-ticker_input = st.sidebar.text_input("Stock Symbol", "AAPL")
+ticker_input = st.sidebar.text_input("Stock Symbol", "AAPL").strip().upper()
 seq_len = st.sidebar.slider("Lookback (Days)", 30, 90, 60)
 pred_len = st.sidebar.slider("Prediction Horizon", 1, 14, 7)
 
 @st.cache_data(ttl=3600)
 def get_data(symbol):
     try:
+        # 1. Force uppercase and strip whitespace
         clean_symbol = symbol.strip().upper()
+        if not clean_symbol:
+            return pd.DataFrame()
+
+        # 2. Fetch using Ticker object
         ticker_obj = yf.Ticker(clean_symbol)
+        
+        # 3. Use period="2y" to ensure we have enough data for the lookback
         df = ticker_obj.history(period="2y", interval="1d", auto_adjust=True)
         
-        if df.empty:
+        # 4. Fallback: If history() fails, try download()
+        if df is None or df.empty:
             df = yf.download(clean_symbol, period="2y", progress=False, auto_adjust=True)
         
         if df.empty:
             return pd.DataFrame()
 
+        # 5. Handle MultiIndex columns (sometimes happens with yfinance)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
             
-        df = df[['Open', 'High', 'Low', 'Close']]
+        # 6. Select core columns and remove timezone info for Plotly/Model compatibility
+        df = df[['Open', 'High', 'Low', 'Close']].copy()
         df.index = df.index.tz_localize(None)
+        
         return df
+    except Exception as e:
+        # Printing to console helps you debug during development
+        print(f"Error fetching {symbol}: {e}")
+        return pd.DataFrame()
     except Exception:
         return pd.DataFrame()
 
